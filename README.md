@@ -32,5 +32,5 @@ playing with distant friends. A real game server is the next step; until then,
 
 ## Credits
 
-Game, art direction and code: built with Claude.
-Music: Chant of the Conqueror · Conquest of Cards · Epic Card Battle · Climb the Leaderboard.
+Game, art direction: built by me, and code: built with Claude.
+Music by VINJA69: Chant of the Conqueror · Conquest of Cards · Epic Card Battle · Climb the Leaderboard.

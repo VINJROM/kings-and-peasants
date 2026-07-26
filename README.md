@@ -9,8 +9,6 @@ lobby code to friends. Runs entirely in the browser — no install, no signup.
 
 ## Play it Here: https://vinjrom.github.io/kings-and-peasants/
 
-Open `index.html` in a browser, or publish it free with GitHub Pages (below).
-
 
 ## How the game plays
 

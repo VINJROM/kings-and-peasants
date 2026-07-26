@@ -2,6 +2,8 @@
 
 **Shed your cards · claim the throne.**
 
+(https://vinjrom.github.io/kings-and-peasants/)
+
 A medieval card game of rank, revolution and taxation. Play against bots or pass a
 lobby code to friends. Runs entirely in the browser — no install, no signup.
 

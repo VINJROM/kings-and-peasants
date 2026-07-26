@@ -63,6 +63,9 @@ input,select{font-family:var(--util);}
   margin:22px 0 8px; display:flex; align-items:center; gap:10px;}
 .sect::after{content:""; flex:1; height:1px; background:rgba(201,162,75,.25);}
 .card-panel{background:var(--night2); border:1px solid rgba(201,162,75,.2); border-radius:12px; padding:14px;}
+.profile-open{border:none; transition:background .15s ease, border-color .15s ease, box-shadow .15s ease;}
+.profile-open:hover{background:#1a140f; border-color:rgba(201,162,75,.4); box-shadow:0 0 0 1px rgba(201,162,75,.15) inset;}
+.profile-open:active{background:#16110c; border-color:rgba(201,162,75,.55);}
 .hint{font-size:13px; color:var(--smoke); line-height:1.45;}
 .field label{display:block; font-family:var(--util); font-size:12px; text-transform:uppercase; letter-spacing:.14em; color:var(--smoke); margin:14px 0 6px;}
 .field input[type=text], .field select{width:100%; background:#120e0b; color:var(--parch); border:1px solid rgba(201,162,75,.3);
@@ -214,6 +217,17 @@ const shuffle = (a) => { const x = [...a]; for (let i = x.length - 1; i > 0; i--
 const buildDeck = () => { const d = []; for (let r = 1; r <= 12; r++) for (let i = 0; i < r; i++) d.push(r); d.push(13, 13); return d; }; // 80 cards incl. 2 Jesters (wild; rank 13 alone)
 
 const RANK_NAMES = { 1: "Majesty", 2: "Regent", 3: "Bishop", 4: "Duke", 5: "Knight", 6: "Squire", 7: "Merchant", 8: "Blacksmith", 9: "Cook", 10: "Shepherd", 11: "Stonecutter", 12: "Peasant", 13: "Jester" };
+// Phone detection, evaluated at call time: needs BOTH the Vibration API and a touch-style
+// pointer. Desktop Chrome exposes navigator.vibrate but is not a phone; iPhones are touch
+// but lack the API (vibration silently unsupported there) — this correctly excludes both.
+const isPhone = () => {
+  try {
+    return typeof navigator !== "undefined" && "vibrate" in navigator &&
+      typeof window !== "undefined" &&
+      (("ontouchstart" in window) || (window.matchMedia && window.matchMedia("(pointer: coarse)").matches));
+  } catch { return false; }
+};
+
 const DIFFS = [
   { id: "squire", label: "Squire", desc: "Plays loosely — a forgiving table." },
   { id: "knight", label: "Knight", desc: "Sheds high cards with purpose." },
@@ -856,6 +870,33 @@ function AudioSheet({ audio, onAudio, trackName, paused, onPauseToggle, onSkip, 
           onChange={(ev) => onAudio({ sfx: +ev.target.value / 100 })}
           style={{ width: "100%", accentColor: "var(--gilt)" }} />
 
+        {isPhone() && (
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+            <span className="hint">📳 Vibrate on your turn</span>
+            <button className="btn small" aria-label="Toggle turn vibration"
+              onClick={() => onAudio({ haptics: audio.haptics === false })}>
+              <span className="t">{audio.haptics !== false ? "On" : "Off"}</span>
+            </button>
+          </div>
+        )}
+
+        <button className="btn gold" style={{ textAlign: "center", marginTop: 18 }} onClick={onClose}><span className="t">Done</span></button>
+      </div>
+    </div>
+  );
+}
+
+function RulesSheet({ onClose }) {
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <h2>The Law of the Court</h2>
+        <div className="sub">how to play</div>
+        <div className="card-panel hint">
+          Ranks run <b>1–12</b> — one 1, twelve 12s — and <b>low beats high</b>. Lead any set of one rank. The next player must play the <b>same number of cards of a strictly lower rank</b>, or pass — and a pass benches you until that trick is won.
+          Win the trick, lead again. First to empty their hand takes the crown — <b>King or Queen</b>, as they prefer; last is the <b>Peasant</b>.
+          Each new round, the Peasant must formally <b>pay their two lowest cards</b> up to the Majesty (the Commoner pays one to the Heir) — nothing else may be offered — and each ruler <b>chooses</b> which cards to hand back in trade. Round one begins with whoever is dealt the lone <b>1</b>: that card is <b>discarded</b> on the spot and its holder leads, one card ahead. The full deck is reshuffled fresh every round, so the 1 rejoins play from round 2. Two <b>Jesters</b> roam the deck — wild alongside any set, but played alone they count as a lowly <b>13</b>. Draw <b>both</b> Jesters and you may declare <b>Revolution</b> — no taxes that round; if the Peasant declares, the whole court flips.
+        </div>
         <button className="btn gold" style={{ textAlign: "center", marginTop: 18 }} onClick={onClose}><span className="t">Done</span></button>
       </div>
     </div>
@@ -866,20 +907,25 @@ function AudioSheet({ audio, onAudio, trackName, paused, onPauseToggle, onSkip, 
 function Home({ profile, onNav, onOpenSettings, onOpenAudio }) {
   return (
     <div className="wrap">
+      <div className="topbar" style={{ paddingLeft: 0 }}>
+        <span className="grow" />
+        <button className="btn small" aria-label="Audio settings" onClick={onOpenAudio}><span className="t">🎵</span></button>
+      </div>
       <div className="crest">
         <div className="rule">✦ ✦ ✦</div>
         <h1>Kings & <em>Peasants</em></h1>
         <div className="tagline">Shed your cards · claim the throne</div>
       </div>
 
-      <div className="row card-panel" style={{ marginTop: 20 }}>
+      <div className="row card-panel profile-open" style={{ marginTop: 20, cursor: "pointer" }}
+        role="button" tabIndex={0} aria-label="Open Your Standing"
+        onClick={onOpenSettings}
+        onKeyDown={(ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); onOpenSettings(); } }}>
         <Avatar p={profile} />
         <div className="grow">
           <div style={{ fontFamily: "var(--util)", fontWeight: 700 }}>{profile.name}</div>
           <div className="hint">Your name & portrait at court</div>
         </div>
-        <button className="btn small" aria-label="Audio settings" onClick={onOpenAudio}><span className="t">🎵</span></button>
-        <button className="btn small" onClick={onOpenSettings}><span className="t">Settings</span></button>
       </div>
 
       <div className="sect">Take a seat</div>
@@ -907,7 +953,7 @@ function Home({ profile, onNav, onOpenSettings, onOpenAudio }) {
 }
 
 /* ============================================================ AI setup */
-function AISetup({ profile, onBack, onStart }) {
+function AISetup({ profile, onBack, onStart, onOpenAudio }) {
   const [bots, setBots] = useState(3);
   const [diff, setDiff] = useState("knight");
   const [rounds, setRounds] = useState(3);
@@ -917,7 +963,7 @@ function AISetup({ profile, onBack, onStart }) {
       <div className="topbar" style={{ paddingLeft: 0 }}>
         <button className="back" onClick={onBack}>‹ Back</button>
         <div className="title grow" style={{ textAlign: "center" }}>Against the Machine Court</div>
-        <span style={{ width: 52 }} />
+        <button className="btn small" aria-label="Audio settings" onClick={onOpenAudio}><span className="t">🎵</span></button>
       </div>
 
       <div className="field"><label>Opponents ({bots} bot{bots > 1 ? "s" : ""} + you = {bots + 1} players)</label>
@@ -972,7 +1018,7 @@ function AISetup({ profile, onBack, onStart }) {
 const lobbyKey = (code) => `kp-lobby:${code}`;
 const gameKey = (code) => `kp-game:${code}`;
 
-function CreateLobby({ profile, onBack, onEnter }) {
+function CreateLobby({ profile, onBack, onEnter, onOpenAudio }) {
   const [busy, setBusy] = useState(false);
   const [toast, showToast] = useToast();
   const create = async () => {
@@ -992,7 +1038,7 @@ function CreateLobby({ profile, onBack, onEnter }) {
       <div className="topbar" style={{ paddingLeft: 0 }}>
         <button className="back" onClick={onBack}>‹ Back</button>
         <div className="title grow" style={{ textAlign: "center" }}>Found a Table</div>
-        <span style={{ width: 52 }} />
+        <button className="btn small" aria-label="Audio settings" onClick={onOpenAudio}><span className="t">🎵</span></button>
       </div>
       <div className="card-panel hint" style={{ marginTop: 8 }}>
         A four-letter code will be minted for your table. Share it with friends, add bots to fill empty chairs,
@@ -1006,7 +1052,7 @@ function CreateLobby({ profile, onBack, onEnter }) {
   );
 }
 
-function BrowseLobbies({ profile, onBack, onEnter }) {
+function BrowseLobbies({ profile, onBack, onEnter, onOpenAudio }) {
   const [lobbies, setLobbies] = useState(null);
   const [code, setCode] = useState("");
   const [toast, showToast] = useToast();
@@ -1040,7 +1086,7 @@ function BrowseLobbies({ profile, onBack, onEnter }) {
       <div className="topbar" style={{ paddingLeft: 0 }}>
         <button className="back" onClick={onBack}>‹ Back</button>
         <div className="title grow" style={{ textAlign: "center" }}>Open Tables</div>
-        <span style={{ width: 52 }} />
+        <button className="btn small" aria-label="Audio settings" onClick={onOpenAudio}><span className="t">🎵</span></button>
       </div>
 
       <div className="field"><label>Join by code</label>
@@ -1301,7 +1347,7 @@ function TaxChooser({ st, entryIdx, onConfirm }) {
 }
 
 /* ============================================================ game table (local + online) */
-export function GameTable({ profile, mode, initial, code, sfxVol = 1, onOpenAudio, onExit }) {
+export function GameTable({ profile, mode, initial, code, sfxVol = 1, haptics = true, onOpenAudio, onExit }) {
   const [st, setSt] = useState(initial || null);
   const stRef = useRef(st); stRef.current = st;
   const [sel, setSel] = useState(null); // {rank, count}
@@ -1313,6 +1359,7 @@ export function GameTable({ profile, mode, initial, code, sfxVol = 1, onOpenAudi
   const [taxSeen, setTaxSeen] = useState(0);
   const [fast, setFast] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
+  const [showRules, setShowRules] = useState(false);
   useEffect(() => { setFast(false); }, [st && st.round]);   // each new deal starts at normal speed
   const audioCtxRef = useRef(null);
   const ensureCtx = () => {
@@ -1409,10 +1456,11 @@ export function GameTable({ profile, mode, initial, code, sfxVol = 1, onOpenAudi
   useEffect(() => {
     if (myTurnNow && !wasMyTurn.current) {
       chime();
-      try { if (navigator.vibrate) navigator.vibrate([50, 40, 50]); } catch {}
+      // one gentle pulse, phones only, honoring the Audio Settings toggle
+      try { if (haptics && isPhone()) navigator.vibrate(30); } catch {}
     }
     wasMyTurn.current = myTurnNow;
-  }, [myTurnNow, chime]);
+  }, [myTurnNow, chime, haptics]);
 
   // no legal play: a 3-second grace window to pass yourself, then auto-pass
   const mustPassNow = myTurnNow && legalPlays(st.hands[myIdx], st.trick, st.round === 1).length === 0;
@@ -1466,8 +1514,13 @@ export function GameTable({ profile, mode, initial, code, sfxVol = 1, onOpenAudi
   const lastTaxVer = useRef(-1);
   useEffect(() => {
     if (!st || st.phase !== "tax" || !st.tax || !iDrive) return;
-    const payIdx = st.tax.findIndex((e) => !e.taken && st.players[e.giver].bot);
-    const retIdx = st.tax.findIndex((e) => e.taken && !e.returned && st.players[e.taker].bot);
+    // Never let the driver act on the seated human's own entries — a card swap or payment
+    // that touches YOUR hand must always come from a tap of yours, never a timer. We check
+    // both the seat's bot flag AND its identity against yours, so a stale/incorrect bot flag
+    // can never silently resolve your choice.
+    const isMine = (idx) => idx === myIdx;
+    const payIdx = st.tax.findIndex((e) => !e.taken && st.players[e.giver].bot && !isMine(e.giver));
+    const retIdx = st.tax.findIndex((e) => e.taken && !e.returned && st.players[e.taker].bot && !isMine(e.taker));
     if (payIdx < 0 && retIdx < 0) return;
     if (online && lastTaxVer.current === st.version) return;
     lastTaxVer.current = st.version;
@@ -1475,9 +1528,9 @@ export function GameTable({ profile, mode, initial, code, sfxVol = 1, onOpenAudi
     taxTimer.current = setTimeout(() => {
       const cur = stRef.current;
       if (!cur || cur.phase !== "tax" || cur.version !== st.version || !cur.tax) return;
-      const p2 = cur.tax.findIndex((e) => !e.taken && cur.players[e.giver].bot);
+      const p2 = cur.tax.findIndex((e) => !e.taken && cur.players[e.giver].bot && !isMine(e.giver));
       if (p2 >= 0) { const e = cur.tax[p2]; commit(resolveTaxPayment(cur, p2, cur.hands[e.giver].slice(0, e.k))); return; }
-      const r2 = cur.tax.findIndex((e) => e.taken && !e.returned && cur.players[e.taker].bot);
+      const r2 = cur.tax.findIndex((e) => e.taken && !e.returned && cur.players[e.taker].bot && !isMine(e.taker));
       if (r2 >= 0) { const e = cur.tax[r2]; commit(resolveTaxReturn(cur, r2, botTaxPick(cur.hands[e.taker], e.k))); }
     }, online ? 1600 : 1300);
     return () => clearTimeout(taxTimer.current);
@@ -1529,6 +1582,7 @@ export function GameTable({ profile, mode, initial, code, sfxVol = 1, onOpenAudi
         <div className="row" style={{ gap: 8 }}>
           <span>You: <b>{st.scores[myIdx] ?? 0} pts</b></span>
           <button className="back" style={{ padding: "2px 4px", fontSize: 15 }} aria-label="Audio settings" onClick={onOpenAudio}>🎵</button>
+          <button className="back" style={{ padding: "2px 4px", fontSize: 15 }} aria-label="How to play" onClick={() => setShowRules(true)}>❓</button>
         </div>
       </div>
 
@@ -1545,7 +1599,7 @@ export function GameTable({ profile, mode, initial, code, sfxVol = 1, onOpenAudi
             const pIdx = st.seatOrder[seat];
             const p = st.players[pIdx];
             const title = royalName(p, seatTitle(seat, n, st.round));
-            const crown = seatCrown(seat, n, st.round);
+            const crown = seatCrown(title);
             const finPos = st.finished.indexOf(pIdx);
             const out = st.hands[pIdx].length === 0 && st.phase === "play";
             return (
@@ -1608,7 +1662,22 @@ export function GameTable({ profile, mode, initial, code, sfxVol = 1, onOpenAudi
               ))}
             </div>
           ))}
-          {myHand.length === 0 && <div className="hint" style={{ padding: "20px 8px" }}>Hand empty — watching the peons scrap it out.</div>}
+          {myHand.length === 0 && (() => {
+            const finPos = st.finished.indexOf(myIdx);
+            if (finPos < 0) return <div className="hint" style={{ padding: "20px 8px" }}>Hand empty — watching the peons scrap it out.</div>;
+            const ord = ["1st", "2nd", "3rd"][finPos] || `${finPos + 1}th`;
+            const finalRound = st.round >= st.settings.rounds;
+            const title = royalName(st.players[myIdx], seatTitle(finPos, n, st.round + 1));
+            const crown = seatCrown(title);
+            return (
+              <div className="hint" style={{ padding: "16px 8px", textAlign: "center" }}>
+                <div style={{ fontFamily: "var(--util)", fontWeight: 800, fontSize: 14, color: "var(--gilt)" }}>
+                  {crown ? crown + " " : ""}You finished {ord}{finalRound ? "" : ` — next round you sit as the ${title}`}
+                </div>
+                <div style={{ marginTop: 6 }}>Hand empty — watching the peons scrap it out.</div>
+              </div>
+            );
+          })()}
         </div>
 
         {sel && !st.trick && (sel.rank === 13 ? jokersHeld : groups[sel.rank] + jokersHeld) > 1 && (
@@ -1672,6 +1741,16 @@ export function GameTable({ profile, mode, initial, code, sfxVol = 1, onOpenAudi
           <div className="sheet">
             <h2>{st.phase === "matchEnd" ? "The Court Adjourns" : `Round ${st.round} Complete`}</h2>
             <div className="sub">{st.phase === "matchEnd" ? "final standings" : "standings so far"}</div>
+            {st.phase === "roundEnd" && st.round < st.settings.rounds && st.finished.indexOf(myIdx) >= 0 && (() => {
+              const finPos = st.finished.indexOf(myIdx);
+              const title = royalName(st.players[myIdx], seatTitle(finPos, n, st.round + 1));
+              const crown = seatCrown(title);
+              return (
+                <div className="hint" style={{ textAlign: "center", marginBottom: 10, fontFamily: "var(--util)", fontWeight: 800, color: "var(--gilt)" }}>
+                  {crown ? crown + " " : ""}Next round you sit as the {title}
+                </div>
+              );
+            })()}
             <table className="standings">
               <thead><tr><th aria-hidden="true"></th><th>Player</th><th className="pts">Points</th></tr></thead>
               <tbody>
@@ -1804,12 +1883,13 @@ export function GameTable({ profile, mode, initial, code, sfxVol = 1, onOpenAudi
           </div>
         </div>
       )}
+      {showRules && <RulesSheet onClose={() => setShowRules(false)} />}
       <Toast msg={toast} />
     </div>
   );
 }
 
-export { makeMatch, startRound, resolveTaxReturn, resolveTaxPayment, botTaxPick, rankTier };
+export { makeMatch, startRound, resolveTaxReturn, resolveTaxPayment, botTaxPick, rankTier, applyAction, botChoose, resolveRevolt };
 
 /* ============================================================ menu music (full-quality files in /music) */
 const MUSIC_TRACKS = [
@@ -1823,7 +1903,7 @@ const MUSIC_TRACKS = [
 export default function App() {
   const [screen, setScreen] = useState("loading"); // home | ai | browse | create | lobby | game
   const [profile, setProfile] = useState(null);
-  const [audioPrefs, setAudioPrefs] = useState({ music: 0.25, sfx: 0.5, muted: false });
+  const [audioPrefs, setAudioPrefs] = useState({ music: 0.25, sfx: 0.5, muted: false, haptics: true });
   const prefsRef = useRef(audioPrefs); prefsRef.current = audioPrefs;
   const updateAudio = (patch) => setAudioPrefs((p) => { const np = { ...p, ...patch }; sSet("kp-audio", np, false); return np; });
   const effMusic = () => prefsRef.current.music;
@@ -1856,12 +1936,13 @@ export default function App() {
     return musicCtxRef.current;
   };
   const playTrack = async (i, fadeIn = 0, keepOld = false) => {
+    if (!MUSIC_TRACKS.length) return;                       // preview build ships without tracks
     const ctx = ensureMusicCtx(); if (!ctx) return;
     if (ctx.state === "suspended") { try { await ctx.resume(); } catch {} }
     let buf = buffersRef.current[i];
     if (!buf) {
       try { buf = await ctx.decodeAudioData(await fetchTrack(MUSIC_TRACKS[i].src)); buffersRef.current = { [i]: buf }; }
-      catch { return; }                     // silent if the music folder isn't served (e.g. artifact preview)
+      catch { return; }
     }
     if (!keepOld && curRef.current) { try { curRef.current.node.onended = null; curRef.current.node.stop(); } catch {} }
     const g = ctx.createGain();
@@ -1908,6 +1989,7 @@ export default function App() {
     else { setUserPaused(true); const ctx = musicCtxRef.current; if (ctx) { try { ctx.suspend(); } catch {} } }
   };
   useEffect(() => {
+    if (!MUSIC_TRACKS.length) return;      // preview build: no soundtrack, skip engine setup entirely
     if (masterGainRef.current) masterGainRef.current.gain.value = effMusic();
     const ctx = musicCtxRef.current;
     if (userPaused || effMusic() <= 0) { if (ctx && ctx.state === "running") { try { ctx.suspend(); } catch {} } return; }
@@ -1925,7 +2007,7 @@ export default function App() {
     }, 500);
     return () => { window.removeEventListener("pointerdown", kick); clearInterval(iv); };
   }, [audioPrefs.music, audioPrefs.muted, userPaused]);
-  useEffect(() => { (async () => { const ap = await sGet("kp-audio", false); if (ap && typeof ap.music === "number") setAudioPrefs({ music: 0.25, sfx: 0.5, muted: false, ...ap }); })(); }, []);
+  useEffect(() => { (async () => { const ap = await sGet("kp-audio", false); if (ap && typeof ap.music === "number") setAudioPrefs({ music: 0.25, sfx: 0.5, muted: false, haptics: true, ...ap }); })(); }, []);
   const [showSettings, setShowSettings] = useState(false);
   const [showAudio, setShowAudio] = useState(false);
   const [localMatch, setLocalMatch] = useState(null);
@@ -1958,12 +2040,12 @@ export default function App() {
     <div className="app">
       <style>{CSS}</style>
       {screen === "home" && <Home profile={profile} onNav={setScreen} onOpenSettings={() => setShowSettings(true)} onOpenAudio={() => setShowAudio(true)} />}
-      {screen === "ai" && <AISetup profile={profile} onBack={() => setScreen("home")} onStart={(m) => { setLocalMatch(m); setScreen("game-local"); }} />}
-      {screen === "create" && <CreateLobby profile={profile} onBack={() => setScreen("home")} onEnter={(c) => { setActiveCode(c); setScreen("lobby"); }} />}
-      {screen === "browse" && <BrowseLobbies profile={profile} onBack={() => setScreen("home")} onEnter={(c) => { setActiveCode(c); setScreen("lobby"); }} />}
+      {screen === "ai" && <AISetup profile={profile} onBack={() => setScreen("home")} onStart={(m) => { setLocalMatch(m); setScreen("game-local"); }} onOpenAudio={() => setShowAudio(true)} />}
+      {screen === "create" && <CreateLobby profile={profile} onBack={() => setScreen("home")} onEnter={(c) => { setActiveCode(c); setScreen("lobby"); }} onOpenAudio={() => setShowAudio(true)} />}
+      {screen === "browse" && <BrowseLobbies profile={profile} onBack={() => setScreen("home")} onEnter={(c) => { setActiveCode(c); setScreen("lobby"); }} onOpenAudio={() => setShowAudio(true)} />}
       {screen === "lobby" && <LobbyRoom profile={profile} code={activeCode} onBack={() => setScreen("home")} onGameStart={() => setScreen("game-online")} />}
-      {screen === "game-local" && <GameTable profile={profile} mode="local" initial={localMatch} sfxVol={audioPrefs.sfx} onOpenAudio={() => setShowAudio(true)} onExit={() => setScreen("home")} />}
-      {screen === "game-online" && <GameTable profile={profile} mode="online" code={activeCode} sfxVol={audioPrefs.sfx} onOpenAudio={() => setShowAudio(true)} onExit={() => setScreen("home")} />}
+      {screen === "game-local" && <GameTable profile={profile} mode="local" initial={localMatch} sfxVol={audioPrefs.sfx} haptics={audioPrefs.haptics !== false} onOpenAudio={() => setShowAudio(true)} onExit={() => setScreen("home")} />}
+      {screen === "game-online" && <GameTable profile={profile} mode="online" code={activeCode} sfxVol={audioPrefs.sfx} haptics={audioPrefs.haptics !== false} onOpenAudio={() => setShowAudio(true)} onExit={() => setScreen("home")} />}
       {showSettings && <SettingsSheet profile={profile} onSave={saveProfile} onClose={() => setShowSettings(false)} />}
       {showAudio && <AudioSheet audio={audioPrefs} onAudio={updateAudio} trackName={nowIdx >= 0 ? MUSIC_TRACKS[nowIdx].name : null}
         paused={userPaused} onPauseToggle={pauseToggle} onSkip={skipTrack} onClose={() => setShowAudio(false)} />}

@@ -1,0 +1,9 @@
+{
+  "name": "kings-and-peasants-server",
+  "version": "1.0.0",
+  "description": "Server-authoritative multiplayer for Kings & Peasants",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" }
+}
